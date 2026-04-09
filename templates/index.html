@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rahul's Mood-Based Movie Recommender</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-film"></i>FilmTales</h1>
+            <p class="tagline">Discover movies that match your mood instantly!</p>
+            <div class="mood-indicator">
+                <div class="current-mood">
+                    <span id="currentMoodText">How are you feeling today?</span>
+                    <div class="mood-emoji" id="moodEmoji">🎬</div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="mood-selector-section">
+                <h2><i class="fas fa-magic"></i> Curate Your Experience</h2>
+                <div class="mood-grid" id="moodGrid">
+                    {% for mood in moods %}
+                    <div class="mood-card" data-mood="{{ mood.id }}" style="--mood-color: {{ mood.color }}; --mood-color-rgb: {{ mood.color[1:3]|int(base=16) }}, {{ mood.color[3:5]|int(base=16) }}, {{ mood.color[5:7]|int(base=16) }}">
+                        <div class="mood-icon-wrapper">
+                            <i class="fas {{ mood.icon }}"></i>
+                            <span class="mood-emoji-overlay">{{ mood.name.split(' ')[-1] }}</span>
+                        </div>
+                        <h3>{{ mood.name.split(' ')[0] }}</h3>
+                        <p>Perfect for when you're feeling {{ mood.name.split(' ')[0].lower() }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="recommendations-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-star"></i> Recommended Movies</h2>
+                    <div class="mood-display">
+                        <span id="selectedMoodDisplay">Select a mood above</span>
+                        <button id="refreshBtn" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Curating the best movies for you...</p>
+                </div>
+                
+                <div class="movies-grid" id="moviesGrid">
+                    <!-- Movies will be loaded here dynamically -->
+                </div>
+                
+                <div class="no-movies" id="noMovies">
+                    <i class="fas fa-film fa-3x"></i>
+                    <h3>No movies found</h3>
+                    <p>Select a mood to get movie recommendations</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Made by Rahul with ❤️</p>
+            <p class="disclaimer">© Copyright 2026 | All rights reserved</p>
+        </footer>
+    </div>
+
+    <!-- Movie Details Modal -->
+    <div class="modal" id="movieModal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div class="modal-body" id="modalBody">
+                <!-- Movie details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
