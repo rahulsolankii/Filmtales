@@ -12,15 +12,14 @@ print(f"Loaded TMDB API KEY: {Config.TMDB_API_KEY[:5]}...") # Log first few char
 
 # Available moods with professional curation
 MOODS = [
-    {'id': 'happy', 'name': 'Joyful 😊', 'color': '#facc15', 'icon': 'fa-smile'},
-    {'id': 'sad', 'name': 'Melancholic 😢', 'color': '#60a5fa', 'icon': 'fa-sad-tear'},
-    {'id': 'excited', 'name': 'Energetic 🤩', 'color': '#fb923c', 'icon': 'fa-bolt'},
-    {'id': 'relaxed', 'name': 'Peaceful 😌', 'color': '#4ade80', 'icon': 'fa-leaf'},
-    {'id': 'adventurous', 'name': 'Adventurous 🗺️', 'color': '#c084fc', 'icon': 'fa-compass'},
+    {'id': 'happy', 'name': 'Happy 😊', 'color': '#facc15', 'icon': 'fa-smile'},
+    {'id': 'sad', 'name': 'Sad 😢', 'color': '#60a5fa', 'icon': 'fa-sad-tear'},
     {'id': 'romantic', 'name': 'Romantic 💖', 'color': '#f472b6', 'icon': 'fa-heart'},
-    {'id': 'inspired', 'name': 'Inspired ✨', 'color': '#2dd4bf', 'icon': 'fa-lightbulb'},
-    {'id': 'scared', 'name': 'Thrilling 😨', 'color': '#f87171', 'icon': 'fa-ghost'},
-    {'id': 'thoughtful', 'name': 'Contemplative 🤔', 'color': '#94a3b8', 'icon': 'fa-brain'}
+    {'id': 'action', 'name': 'Action ⚔️', 'color': '#fb923c', 'icon': 'fa-bolt'},
+    {'id': 'motivational', 'name': 'Motivational 🔥', 'color': '#4ade80', 'icon': 'fa-fire'},
+    {'id': 'thriller', 'name': 'Thriller 🎭', 'color': '#c084fc', 'icon': 'fa-mask'},
+    {'id': 'horror', 'name': 'Horror 👻', 'color': '#f87171', 'icon': 'fa-ghost'},
+    {'id': 'calm', 'name': 'Calm 😌', 'color': '#2dd4bf', 'icon': 'fa-leaf'}
 ]
 
 @app.route('/favicon.ico')
@@ -31,6 +30,16 @@ def favicon():
 def index():
     """Render the main page"""
     return render_template('index.html', moods=MOODS)
+
+@app.route('/admin-login')
+def admin_login():
+    """Render the admin login page"""
+    return render_template('admin_login.html')
+
+@app.route('/admin-dashboard')
+def admin_dashboard():
+    """Render the admin dashboard page"""
+    return render_template('admin_dashboard.html')
 
 @app.route('/get_recommendations', methods=['POST'])
 def get_recommendations():

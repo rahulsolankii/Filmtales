@@ -1,3 +1,5 @@
+import { db, collection, getDocs, query, where } from './firebase-config.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const moodCards = document.querySelectorAll('.mood-card');
@@ -68,64 +70,68 @@ document.addEventListener('DOMContentLoaded', function() {
         loadMovies(mood);
     }
     
-    function loadMovies(mood) {
+    async function loadMovies(mood) {
         // Show loading, hide other sections
         loading.style.display = 'block';
         moviesGrid.style.display = 'none';
         noMovies.style.display = 'none';
         
-        // Fetch movies from backend
-        fetch('/get_recommendations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mood: mood })
-        })
-        .then(response => response.json())
-        .then(data => {
-            loading.style.display = 'none';
+        try {
+            // 1. Fetch from TMDB API
+            const apiPromise = fetch('/get_recommendations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mood: mood })
+            }).then(r => r.json());
+
+            // 2. Fetch from Firestore
+            const dbPromise = fetchFirestoreMovies(mood);
+
+            // 3. MERGE BOTH
+            const [apiData, dbMovies] = await Promise.all([apiPromise, dbPromise]);
             
-            if (data.success && data.movies.length > 0) {
-                currentMovies = data.movies;
-                displayMovies(data.movies);
+            loading.style.display = 'none';
+
+            let apiMovies = (apiData.success && apiData.movies) ? apiData.movies : [];
+            const combinedMovies = [...dbMovies, ...apiMovies];
+
+            if (combinedMovies.length > 0) {
+                currentMovies = combinedMovies;
+                displayMovies(combinedMovies);
                 moviesGrid.style.display = 'grid';
             } else {
                 noMovies.style.display = 'block';
                 moviesGrid.style.display = 'none';
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        } catch (error) {
+            console.error('Error loading movies:', error);
             loading.style.display = 'none';
             noMovies.style.display = 'block';
-        });
+        }
+    }
+
+    // 6. Example Firestore Queries
+    async function fetchFirestoreMovies(mood) {
+        try {
+            const movieRef = collection(db, "movies");
+            const q = query(movieRef, where("mood", "==", mood.toLowerCase()));
+            const snapshot = await getDocs(q);
+            
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                isFirestore: true, // Marker for Firestore movies
+                ...doc.data()
+            }));
+        } catch (err) {
+            console.error("Firestore fetch error:", err);
+            return [];
+        }
     }
     
     function loadRandomMoodMovies() {
-        fetch('/get_random_mood_movies')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.movies.length > 0) {
-                    // Select the random mood in UI
-                    const moodCard = document.querySelector(`[data-mood="${data.mood}"]`);
-                    if (moodCard) {
-                        moodCard.classList.add('active');
-                        currentMood = data.mood;
-                        const moodName = getMoodName(data.mood);
-                        currentMoodText.textContent = `Feeling ${moodName}?`;
-                        moodEmoji.textContent = getMoodEmoji(data.mood);
-                        selectedMoodDisplay.textContent = `Movies for ${moodName} mood`;
-                    }
-                    
-                    currentMovies = data.movies;
-                    displayMovies(data.movies);
-                    moviesGrid.style.display = 'grid';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        const randomMoods = ['happy', 'romantic', 'action', 'motivational'];
+        const randomMood = randomMoods[Math.floor(Math.random() * randomMoods.length)];
+        selectMood(randomMood);
     }
     
     function displayMovies(movies) {
@@ -152,11 +158,33 @@ function createMovieCard(movie) {
     const poster = document.createElement('div');
     poster.className = 'movie-poster';
     
-    if (movie.poster_url) {
+    // Handle both TMDB (poster_url) and Firestore (thumbnail)
+    const imgUrl = movie.thumbnail || movie.poster_url;
+    const movieName = movie.movieName || movie.title;
+    
+    if (imgUrl) {
         const img = document.createElement('img');
-        img.src = movie.poster_url;
-        img.alt = movie.title;
+        img.src = imgUrl;
+        img.alt = movieName;
         img.loading = 'lazy';
+        
+        // Add error handler for broken images
+        img.onerror = function() {
+            const parent = this.parentElement;
+            if (parent) {
+                parent.innerHTML = '';
+                const noPoster = document.createElement('div');
+                noPoster.className = 'no-poster';
+                noPoster.innerHTML = `
+                    <div class="no-poster-content">
+                        <i class="fas fa-film"></i>
+                        <span class="no-poster-text">${movieName}</span>
+                    </div>
+                `;
+                parent.appendChild(noPoster);
+            }
+        };
+        
         poster.appendChild(img);
     } else {
         const noPoster = document.createElement('div');
@@ -171,11 +199,11 @@ function createMovieCard(movie) {
     
     const genre = document.createElement('div');
     genre.className = 'movie-genre';
-    genre.textContent = movie.genre || 'Film';
+    genre.textContent = (Array.isArray(movie.genre) ? movie.genre.join(', ') : movie.genre) || 'Film';
     
     const title = document.createElement('h3');
     title.className = 'movie-title';
-    title.textContent = movie.title;
+    title.textContent = movieName;
     
     const meta = document.createElement('div');
     meta.className = 'movie-meta';
@@ -188,7 +216,8 @@ function createMovieCard(movie) {
     
     const description = document.createElement('p');
     description.className = 'movie-description';
-    description.textContent = movie.description ? movie.description.substring(0, 120) + '...' : 'No description available.';
+    const rawDesc = movie.oneLineTag || movie.description || 'No description available.';
+    description.textContent = rawDesc.substring(0, 120) + '...';
     
     // Append in professional order
     info.appendChild(genre);
@@ -230,7 +259,14 @@ function showMovieDetails(movie) {
     
     movieModal.style.display = 'block';
     
-    // Get detailed movie info
+    // 7. Handle Firestore movies in modal
+    if (movie.isFirestore) {
+        // For Firestore movies, we already have all details in the movie object
+        displayEnhancedMovieDetails(movie, movie);
+        return;
+    }
+    
+    // Get detailed movie info for TMDB movies
     fetch(`/get_movie_details/${movie.id}`)
         .then(response => response.json())
         .then(data => {
@@ -250,17 +286,27 @@ function showMovieDetails(movie) {
 function displayEnhancedMovieDetails(details, originalMovie) {
     const modalBody = document.getElementById('modalBody');
     
-    const runtime = details.runtime ? `${details.runtime} min` : 'Not specified';
-    const tagline = details.tagline ? `<p class="tagline" style="font-style: italic; color: #ffa726; margin: 10px 0;">"${details.tagline}"</p>` : '';
+    const runtime = (details.duration || details.runtime) ? `${details.duration || details.runtime + ' min'}` : 'Not specified';
+    const taglineText = details.oneLineTag || details.tagline;
+    const tagline = taglineText ? `<p class="tagline" style="font-style: italic; color: #ffa726; margin: 10px 0;">"${taglineText}"</p>` : '';
+    
+    // Handle Firestore vs TMDB property names
+    const title = details.movieName || details.title || originalMovie.movieName || originalMovie.title;
+    const rating = details.rating || originalMovie.rating;
+    const year = details.year || originalMovie.year || (details.release_date ? details.release_date.substring(0,4) : 'N/A');
+    const posterUrl = details.thumbnail || details.poster_url || originalMovie.thumbnail || originalMovie.poster_url;
+    const overview = details.overview || originalMovie.overview || originalMovie.description;
+    const trailerLink = ensureEmbedUrl(details.trailerLink || (details.trailer ? `https://www.youtube.com/embed/${details.trailer.key}` : null));
     
     // Streaming providers HTML
+    const providers = details.platforms || details.streaming || [];
     let streamingHTML = '';
-    if (details.streaming && details.streaming.length > 0) {
+    if (providers && providers.length > 0) {
         streamingHTML = `
             <div class="modal-streaming">
                 <h3><i class="fas fa-tv"></i> Available On</h3>
                 <div class="provider-list">
-                    ${details.streaming.map(provider => `
+                    ${providers.map(provider => `
                         <div class="provider-badge">
                             <i class="fas fa-play-circle"></i> ${provider}
                         </div>
@@ -272,14 +318,14 @@ function displayEnhancedMovieDetails(details, originalMovie) {
     
     // Trailer HTML
     let trailerHTML = '';
-    if (details.trailer && details.trailer.key) {
+    if (trailerLink) {
         trailerHTML = `
             <div class="trailer-section">
                 <h3><i class="fas fa-film"></i> Watch Trailer</h3>
                 <div class="trailer-container">
                     <iframe 
-                        src="https://www.youtube.com/embed/${details.trailer.key}" 
-                        title="${details.trailer.name}"
+                        src="${trailerLink}" 
+                        title="Movie Trailer"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowfullscreen>
                     </iframe>
@@ -299,13 +345,14 @@ function displayEnhancedMovieDetails(details, originalMovie) {
     }
     
     // Cast HTML
+    const cast = details.starring || details.cast || [];
     let castHTML = '';
-    if (details.cast && details.cast.length > 0) {
+    if (cast && cast.length > 0) {
         castHTML = `
             <div class="cast-section">
                 <h3><i class="fas fa-users"></i> Starring</h3>
                 <div class="cast-list">
-                    ${details.cast.map(actor => `
+                    ${cast.map(actor => `
                         <div class="cast-member">${actor}</div>
                     `).join('')}
                 </div>
@@ -316,14 +363,14 @@ function displayEnhancedMovieDetails(details, originalMovie) {
     modalBody.innerHTML = `
         <div class="movie-details">
             <div class="details-header">
-                <h2>${details.title || originalMovie.title}</h2>
+                <h2>${title}</h2>
                 <div class="movie-stats">
                     <div class="stat-item">
-                        <div class="stat-value">${details.rating || originalMovie.rating}</div>
+                        <div class="stat-value">${rating}</div>
                         <div class="stat-label">Rating</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">${details.release_date ? details.release_date.substring(0,4) : originalMovie.year}</div>
+                        <div class="stat-value">${year}</div>
                         <div class="stat-label">Year</div>
                     </div>
                     <div class="stat-item">
@@ -336,15 +383,15 @@ function displayEnhancedMovieDetails(details, originalMovie) {
             
             <div class="details-content">
                 <div class="details-poster">
-                    ${details.poster_url ? 
-                        `<img src="${details.poster_url}" alt="${details.title}">` : 
+                    ${posterUrl ? 
+                        `<img src="${posterUrl}" alt="${title}">` : 
                         `<div class="no-poster-large"><i class="fas fa-film fa-5x"></i></div>`
                     }
                 </div>
                 
                 <div class="details-info">
                     <div class="genres">
-                        ${(details.genres || originalMovie.genre.split(', ')).map(genre => 
+                        ${(Array.isArray(details.genre) ? details.genre : (details.genre ? details.genre.split(', ') : [])).map(genre => 
                             `<span class="genre-tag">${genre}</span>`
                         ).join('')}
                     </div>
@@ -352,7 +399,7 @@ function displayEnhancedMovieDetails(details, originalMovie) {
                     ${streamingHTML}
                     
                     <h3>Overview</h3>
-                    <p class="overview">${details.overview || originalMovie.description}</p>
+                    <p class="overview">${overview}</p>
                     
                     ${details.director ? `
                         <div class="director-section">
@@ -367,7 +414,7 @@ function displayEnhancedMovieDetails(details, originalMovie) {
                     
                     <div class="mood-match">
                         <h3><i class="fas fa-heart"></i> Why this matches your mood</h3>
-                        <p>This movie is perfect for your <strong>${getMoodName(currentMood)}</strong> mood. The genre and tone align with what you're feeling right now!</p>
+                        <p>${details.whyThisMatchesMood || `This movie is perfect for your <strong>${getMoodName(currentMood)}</strong> mood. The genre and tone align with what you're feeling right now!`}</p>
                     </div>
                 </div>
             </div>
@@ -423,31 +470,52 @@ function displayEnhancedMovieDetails(details, originalMovie) {
     // Helper functions
     function getMoodName(moodId) {
         const moodNames = {
-            'happy': 'Joyful',
-            'sad': 'Melancholic',
-            'excited': 'Energetic',
-            'relaxed': 'Peaceful',
-            'adventurous': 'Adventurous',
+            'happy': 'Happy',
+            'sad': 'Sad',
             'romantic': 'Romantic',
-            'inspired': 'Inspired',
-            'scared': 'Thrilling',
-            'thoughtful': 'Contemplative'
+            'action': 'Action',
+            'motivational': 'Motivational',
+            'thriller': 'Thriller',
+            'horror': 'Horror',
+            'calm': 'Calm'
         };
-        return moodNames[moodId] || 'this';
+        return moodNames[moodId] || moodId;
     }
     
     function getMoodEmoji(moodId) {
         const moodEmojis = {
             'happy': '😊',
             'sad': '😢',
-            'excited': '🤩',
-            'relaxed': '😌',
-            'adventurous': '🗺️',
             'romantic': '💖',
-            'inspired': '✨',
-            'scared': '😨',
-            'thoughtful': '🤔'
+            'action': '⚔️',
+            'motivational': '🔥',
+            'thriller': '🎭',
+            'horror': '👻',
+            'calm': '😌'
         };
         return moodEmojis[moodId] || '🎬';
+    }
+
+    // Helper for YouTube embed link conversion
+    function ensureEmbedUrl(url) {
+        if (!url) return null;
+        if (url.includes('youtube.com/embed/')) return url;
+        
+        let videoId = '';
+        try {
+            if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+            } else if (url.includes('youtube.com/watch')) {
+                const urlObj = new URL(url);
+                videoId = urlObj.searchParams.get('v');
+            } else if (url.includes('youtube.com/v/')) {
+                videoId = url.split('youtube.com/v/')[1].split(/[?#]/)[0];
+            }
+        } catch (e) {
+            console.error('Error parsing YouTube URL:', e);
+            return url;
+        }
+        
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
     }
 });

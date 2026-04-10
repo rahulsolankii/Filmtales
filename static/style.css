@@ -324,6 +324,43 @@ h2 i {
     background: linear-gradient(to bottom, transparent 60%, rgba(15, 23, 42, 0.9));
 }
 
+/* No Poster Fallback */
+.no-poster {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.no-poster-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    text-align: center;
+}
+
+.no-poster i {
+    font-size: 4rem;
+    opacity: 0.3;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.no-poster-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-main);
+    opacity: 0.8;
+}
+
 .movie-info {
     padding: 30px;
     flex-grow: 1;

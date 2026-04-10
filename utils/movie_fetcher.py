@@ -203,7 +203,7 @@ class MovieFetcher:
                     'year': movie.get('release_date', '')[:4] if movie.get('release_date') else 'N/A',
                     'rating': round(movie.get('vote_average', 0), 1),
                     'description': movie.get('overview', 'No description available.'),
-                    'poster_url': f"{self.image_base_url}{movie.get('poster_path', '')}" if movie.get('poster_path') else None,
+                    'poster_url': f"{self.image_base_url}{movie.get('poster_path')}" if movie.get('poster_path') else None,
                     'genre': self._get_genre_names(movie.get('genre_ids', [])),
                     'popularity': movie.get('popularity', 0),
                     'streaming': [],  # Will be filled later

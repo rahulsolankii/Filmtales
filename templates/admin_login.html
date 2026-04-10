@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | FilmTales</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .login-container {
+            max-width: 450px;
+            margin: 100px auto;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 50px;
+            border-radius: 40px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(20px);
+            text-align: center;
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.5);
+        }
+        .login-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            justify-content: center;
+        }
+        .form-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            color: #fff;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(168, 85, 247, 0.4);
+        }
+        #loginError {
+            color: #ef4444;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" style="text-decoration: none;"><h1><i class="fas fa-film"></i>FilmTales</h1></a>
+            <p class="tagline">Admin Control Panel</p>
+        </header>
+
+        <div class="login-container">
+            <div class="login-header">
+                <h2>Admin Login</h2>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="login-btn">Login Access</button>
+                <div id="loginError">Invalid username or password!</div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, query, where, addDoc } from "{{ url_for('static', filename='firebase-config.js') }}";
+
+        // 7. Auto-create default admin on app start
+        async function ensureDefaultAdmin() {
+            try {
+                const adminRef = collection(db, "admins");
+                const q = query(adminRef, where("username", "==", "Rahul"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    await addDoc(adminRef, {
+                        username: "Rahul",
+                        password: "Rahul@123"
+                    });
+                    console.log("Default admin created successfully.");
+                }
+            } catch (err) {
+                console.error("Error ensuring default admin:", err);
+            }
+        }
+
+        ensureDefaultAdmin();
+
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const adminRef = collection(db, "admins");
+                const q = query(adminRef, where("username", "==", username), where("password", "==", password));
+                const snapshot = await getDocs(q);
+
+                if (!snapshot.empty) {
+                    // Save admin status in session storage
+                    sessionStorage.setItem('isAdmin', 'true');
+                    sessionStorage.setItem('adminUser', username);
+                    window.location.href = '/admin-dashboard';
+                } else {
+                    loginError.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Login Error:", err);
+                alert("Something went wrong with login. Check console.");
+            }
+        });
+    </script>
+</body>
+</html>

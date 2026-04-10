@@ -12,56 +12,50 @@ class Config:
     MOOD_TO_GENRES = {
         'happy': {
             'genres': [35, 10402, 10751],  # Comedy, Music, Family
-            'weights': [5, 3, 2],  # How many movies from each genre
-            'min_movies': 68,
-            'max_movies': 72
+            'weights': [5, 3, 2],
+            'min_movies': 40,
+            'max_movies': 50
         },
         'sad': {
             'genres': [18, 10749, 9648],  # Drama, Romance, Mystery
             'weights': [5, 3, 2],
-            'min_movies': 58,
-            'max_movies': 62
-        },
-        'excited': {
-            'genres': [28, 12, 878],  # Action, Adventure, Sci-Fi
-            'weights': [5, 3, 2],
-            'min_movies': 48,
-            'max_movies': 52
-        },
-        'relaxed': {
-            'genres': [14, 16, 36],  # Fantasy, Animation, History
-            'weights': [4, 4, 2],
-            'min_movies': 46,
+            'min_movies': 40,
             'max_movies': 50
-        },
-        'adventurous': {
-            'genres': [12, 28, 10752],  # Adventure, Action, War
-            'weights': [5, 3, 2],
-            'min_movies': 48,
-            'max_movies': 52
         },
         'romantic': {
             'genres': [10749, 10402, 35],  # Romance, Music, Comedy
             'weights': [5, 3, 2],
-            'min_movies': 48,
-            'max_movies': 55
+            'min_movies': 40,
+            'max_movies': 50
         },
-        'inspired': {
-            'genres': [99, 36, 18],  # Documentary, History, Drama
-            'weights': [4, 3, 3],
-            'min_movies': 46,
-            'max_movies': 55
+        'action': {
+            'genres': [28, 12, 878],  # Action, Adventure, Sci-Fi
+            'weights': [5, 3, 2],
+            'min_movies': 40,
+            'max_movies': 50
         },
-        'scared': {
+        'motivational': {
+            'genres': [99, 18, 36],  # Documentary, Drama, History
+            'weights': [4, 4, 2],
+            'min_movies': 40,
+            'max_movies': 50
+        },
+        'thriller': {
+            'genres': [53, 80, 9648],  # Thriller, Crime, Mystery
+            'weights': [5, 3, 2],
+            'min_movies': 40,
+            'max_movies': 50
+        },
+        'horror': {
             'genres': [27, 53, 9648],  # Horror, Thriller, Mystery
             'weights': [5, 3, 2],
-            'min_movies': 48,
-            'max_movies': 60
+            'min_movies': 40,
+            'max_movies': 50
         },
-        'thoughtful': {
-            'genres': [18, 878, 9648],  # Drama, Sci-Fi, Mystery
-            'weights': [4, 3, 3],
-            'min_movies': 45,
+        'calm': {
+            'genres': [14, 16, 10751],  # Fantasy, Animation, Family
+            'weights': [4, 4, 2],
+            'min_movies': 40,
             'max_movies': 50
         }
     }
