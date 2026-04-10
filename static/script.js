@@ -1,125 +1,100 @@
 import { db, collection, getDocs, query, where } from './firebase-config.js';
 
 document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
-    const moodCards = document.querySelectorAll('.mood-card');
+    console.log("Filmtales UI Loaded. Context:", window.FILMTALES_CONTEXT);
+
     const moviesGrid = document.getElementById('moviesGrid');
     const loading = document.getElementById('loading');
     const noMovies = document.getElementById('noMovies');
     const refreshBtn = document.getElementById('refreshBtn');
-    const currentMoodText = document.getElementById('currentMoodText');
-    const moodEmoji = document.getElementById('moodEmoji');
-    const selectedMoodDisplay = document.getElementById('selectedMoodDisplay');
+    
+    // Global Modal elements
     const movieModal = document.getElementById('movieModal');
+    const modalBody = document.getElementById('modalBody');
     const closeBtn = document.querySelector('.close-btn');
-    
-    // Current state
-    let currentMood = '';
-    let currentMovies = [];
-    
-    // Initialize with random mood
-    loadRandomMoodMovies();
-    
-    // Mood card click event
-    moodCards.forEach(card => {
-        card.addEventListener('click', function() {
-            const mood = this.dataset.mood;
-            selectMood(mood);
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            movieModal.style.display = 'none';
         });
-    });
-    
-    // Refresh button click event
-    refreshBtn.addEventListener('click', function() {
-        if (currentMood) {
-            loadMovies(currentMood);
-        }
-    });
-    
-    // Close modal when clicking X
-    closeBtn.addEventListener('click', function() {
-        movieModal.style.display = 'none';
-    });
-    
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        if (event.target === movieModal) {
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target === movieModal) {
             movieModal.style.display = 'none';
         }
     });
-    
-    // Functions
-    function selectMood(mood) {
-        // Update UI
-        moodCards.forEach(card => {
-            card.classList.remove('active');
-            if (card.dataset.mood === mood) {
-                card.classList.add('active');
+
+    // ---------------------------------------------------------------- //
+    // Context Branching logic
+    // ---------------------------------------------------------------- //
+
+    if (window.FILMTALES_CONTEXT === 'landing') {
+        const previewMovies = window.PREVIEW_MOVIES_DATA || [];
+        if (previewMovies.length > 0) {
+            const previewContainer = document.getElementById('moviePreviewContainer');
+            if (previewContainer) previewContainer.style.display = 'block';
+            displayMovies(previewMovies, moviesGrid);
+        }
+    } 
+    else if (window.FILMTALES_CONTEXT === 'results') {
+        const activeMood = window.ACTIVE_MOOD_ID;
+        if (activeMood) {
+            loadMovies(activeMood.toLowerCase());
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => loadMovies(activeMood.toLowerCase()));
             }
-        });
-        
-        // Update current mood display
-        currentMood = mood;
-        const moodName = getMoodName(mood);
-        const moodEmojiChar = getMoodEmoji(mood);
-        
-        currentMoodText.textContent = `Feeling ${moodName}?`;
-        moodEmoji.textContent = moodEmojiChar;
-        selectedMoodDisplay.textContent = `Movies for ${moodName} mood`;
-        
-        // Load movies for selected mood
-        loadMovies(mood);
+        }
     }
-    
+
+    // ---------------------------------------------------------------- //
+    // Data Fetching 
+    // ---------------------------------------------------------------- //
+
     async function loadMovies(mood) {
-        // Show loading, hide other sections
-        loading.style.display = 'block';
-        moviesGrid.style.display = 'none';
-        noMovies.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+        if (moviesGrid) moviesGrid.style.display = 'none';
+        if (noMovies) noMovies.style.display = 'none';
         
         try {
-            // 1. Fetch from TMDB API
-            const apiPromise = fetch('/get_recommendations', {
+            // Fetch from API
+            const apiRequest = fetch('/get_recommendations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mood: mood })
             }).then(r => r.json());
 
-            // 2. Fetch from Firestore
-            const dbPromise = fetchFirestoreMovies(mood);
+            // Fetch from Firestore
+            const dbRequest = fetchFirestoreMovies(mood);
 
-            // 3. MERGE BOTH
-            const [apiData, dbMovies] = await Promise.all([apiPromise, dbPromise]);
-            
-            loading.style.display = 'none';
+            const [apiData, dbMovies] = await Promise.all([apiRequest, dbRequest]);
+
+            if (loading) loading.style.display = 'none';
 
             let apiMovies = (apiData.success && apiData.movies) ? apiData.movies : [];
             const combinedMovies = [...dbMovies, ...apiMovies];
 
             if (combinedMovies.length > 0) {
-                currentMovies = combinedMovies;
-                displayMovies(combinedMovies);
-                moviesGrid.style.display = 'grid';
+                displayMovies(combinedMovies, moviesGrid);
+                if (moviesGrid) moviesGrid.style.display = 'grid';
             } else {
-                noMovies.style.display = 'block';
-                moviesGrid.style.display = 'none';
+                if (noMovies) noMovies.style.display = 'block';
             }
         } catch (error) {
             console.error('Error loading movies:', error);
-            loading.style.display = 'none';
-            noMovies.style.display = 'block';
+            if (loading) loading.style.display = 'none';
+            if (noMovies) noMovies.style.display = 'block';
         }
     }
 
-    // 6. Example Firestore Queries
     async function fetchFirestoreMovies(mood) {
         try {
             const movieRef = collection(db, "movies");
-            const q = query(movieRef, where("mood", "==", mood.toLowerCase()));
+            const q = query(movieRef, where("mood", "==", mood));
             const snapshot = await getDocs(q);
-            
             return snapshot.docs.map(doc => ({
                 id: doc.id,
-                isFirestore: true, // Marker for Firestore movies
+                isFirestore: true,
                 ...doc.data()
             }));
         } catch (err) {
@@ -127,395 +102,238 @@ document.addEventListener('DOMContentLoaded', function() {
             return [];
         }
     }
-    
-    function loadRandomMoodMovies() {
-        const randomMoods = ['happy', 'romantic', 'action', 'motivational'];
-        const randomMood = randomMoods[Math.floor(Math.random() * randomMoods.length)];
-        selectMood(randomMood);
-    }
-    
-    function displayMovies(movies) {
-        moviesGrid.innerHTML = '';
-        
+
+    // ---------------------------------------------------------------- //
+    // DOM Rendering 
+    // ---------------------------------------------------------------- //
+
+    function displayMovies(movies, container) {
+        if (!container) return;
+        container.innerHTML = '';
         movies.forEach(movie => {
-            const movieCard = createMovieCard(movie);
-            moviesGrid.appendChild(movieCard);
+            container.appendChild(createMovieCard(movie));
         });
     }
-    
-function createMovieCard(movie) {
-    const card = document.createElement('div');
-    card.className = 'movie-card';
-    card.style.setProperty('--mood-color', movie.mood_color || '#6366f1');
-    
-    // Convert hex color to RGB for glow effect
-    const rgb = hexToRgb(movie.mood_color || '#6366f1');
-    if (rgb) {
-        card.style.setProperty('--mood-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-    }
-    
-    // Poster Section
-    const poster = document.createElement('div');
-    poster.className = 'movie-poster';
-    
-    // Handle both TMDB (poster_url) and Firestore (thumbnail)
-    const imgUrl = movie.thumbnail || movie.poster_url;
-    const movieName = movie.movieName || movie.title;
-    
-    if (imgUrl) {
-        const img = document.createElement('img');
-        img.src = imgUrl;
-        img.alt = movieName;
-        img.loading = 'lazy';
-        
-        // Add error handler for broken images
-        img.onerror = function() {
-            const parent = this.parentElement;
-            if (parent) {
-                parent.innerHTML = '';
-                const noPoster = document.createElement('div');
-                noPoster.className = 'no-poster';
-                noPoster.innerHTML = `
-                    <div class="no-poster-content">
-                        <i class="fas fa-film"></i>
-                        <span class="no-poster-text">${movieName}</span>
-                    </div>
-                `;
-                parent.appendChild(noPoster);
-            }
-        };
-        
-        poster.appendChild(img);
-    } else {
-        const noPoster = document.createElement('div');
-        noPoster.className = 'no-poster';
-        noPoster.innerHTML = `<i class="fas fa-film"></i>`;
-        poster.appendChild(noPoster);
-    }
-    
-    // Info Section
-    const info = document.createElement('div');
-    info.className = 'movie-info';
-    
-    const genre = document.createElement('div');
-    genre.className = 'movie-genre';
-    genre.textContent = (Array.isArray(movie.genre) ? movie.genre.join(', ') : movie.genre) || 'Film';
-    
-    const title = document.createElement('h3');
-    title.className = 'movie-title';
-    title.textContent = movieName;
-    
-    const meta = document.createElement('div');
-    meta.className = 'movie-meta';
-    meta.innerHTML = `
-        <span class="movie-year">${movie.year || 'N/A'}</span>
-        <span class="movie-rating">
-            <i class="fas fa-star" style="color: #facc15;"></i> ${movie.rating || 'N/A'}
-        </span>
-    `;
-    
-    const description = document.createElement('p');
-    description.className = 'movie-description';
-    const rawDesc = movie.oneLineTag || movie.description || 'No description available.';
-    description.textContent = rawDesc.substring(0, 120) + '...';
-    
-    // Append in professional order
-    info.appendChild(genre);
-    info.appendChild(title);
-    info.appendChild(meta);
-    info.appendChild(description);
-    
-    card.appendChild(poster);
-    card.appendChild(info);
-    
-    // Add click event to show details
-    card.addEventListener('click', function() {
-        showMovieDetails(movie);
-    });
-    
-    return card;
-}
 
-// Helper function to convert hex to RGB
-function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
-    
-// Update the showMovieDetails function
-function showMovieDetails(movie) {
-    const modalBody = document.getElementById('modalBody');
-    
-    modalBody.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="spinner"></div>
-            <p>Loading movie details...</p>
-        </div>
-    `;
-    
-    movieModal.style.display = 'block';
-    
-    // 7. Handle Firestore movies in modal
-    if (movie.isFirestore) {
-        // For Firestore movies, we already have all details in the movie object
-        displayEnhancedMovieDetails(movie, movie);
-        return;
-    }
-    
-    // Get detailed movie info for TMDB movies
-    fetch(`/get_movie_details/${movie.id}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayEnhancedMovieDetails(data.details, movie);
-            } else {
-                displayMovieDetails(movie, movie);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            displayMovieDetails(movie, movie);
-        });
-}
-
-// New function for enhanced details
-function displayEnhancedMovieDetails(details, originalMovie) {
-    const modalBody = document.getElementById('modalBody');
-    
-    const runtime = (details.duration || details.runtime) ? `${details.duration || details.runtime + ' min'}` : 'Not specified';
-    const taglineText = details.oneLineTag || details.tagline;
-    const tagline = taglineText ? `<p class="tagline" style="font-style: italic; color: #ffa726; margin: 10px 0;">"${taglineText}"</p>` : '';
-    
-    // Handle Firestore vs TMDB property names
-    const title = details.movieName || details.title || originalMovie.movieName || originalMovie.title;
-    const rating = details.rating || originalMovie.rating;
-    const year = details.year || originalMovie.year || (details.release_date ? details.release_date.substring(0,4) : 'N/A');
-    const posterUrl = details.thumbnail || details.poster_url || originalMovie.thumbnail || originalMovie.poster_url;
-    const overview = details.overview || originalMovie.overview || originalMovie.description;
-    const trailerLink = ensureEmbedUrl(details.trailerLink || (details.trailer ? `https://www.youtube.com/embed/${details.trailer.key}` : null));
-    
-    // Streaming providers HTML
-    const providers = details.platforms || details.streaming || [];
-    let streamingHTML = '';
-    if (providers && providers.length > 0) {
-        streamingHTML = `
-            <div class="modal-streaming">
-                <h3><i class="fas fa-tv"></i> Available On</h3>
-                <div class="provider-list">
-                    ${providers.map(provider => `
-                        <div class="provider-badge">
-                            <i class="fas fa-play-circle"></i> ${provider}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Trailer HTML
-    let trailerHTML = '';
-    if (trailerLink) {
-        trailerHTML = `
-            <div class="trailer-section">
-                <h3><i class="fas fa-film"></i> Watch Trailer</h3>
-                <div class="trailer-container">
-                    <iframe 
-                        src="${trailerLink}" 
-                        title="Movie Trailer"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen>
-                    </iframe>
-                </div>
-            </div>
-        `;
-    } else {
-        trailerHTML = `
-            <div class="trailer-section">
-                <h3><i class="fas fa-film"></i> Trailer</h3>
-                <div class="no-trailer">
-                    <i class="fas fa-video-slash fa-2x"></i>
-                    <p>No trailer available</p>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Cast HTML
-    const cast = details.starring || details.cast || [];
-    let castHTML = '';
-    if (cast && cast.length > 0) {
-        castHTML = `
-            <div class="cast-section">
-                <h3><i class="fas fa-users"></i> Starring</h3>
-                <div class="cast-list">
-                    ${cast.map(actor => `
-                        <div class="cast-member">${actor}</div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    modalBody.innerHTML = `
-        <div class="movie-details">
-            <div class="details-header">
-                <h2>${title}</h2>
-                <div class="movie-stats">
-                    <div class="stat-item">
-                        <div class="stat-value">${rating}</div>
-                        <div class="stat-label">Rating</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${year}</div>
-                        <div class="stat-label">Year</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">${runtime}</div>
-                        <div class="stat-label">Duration</div>
-                    </div>
-                </div>
-                ${tagline}
-            </div>
-            
-            <div class="details-content">
-                <div class="details-poster">
-                    ${posterUrl ? 
-                        `<img src="${posterUrl}" alt="${title}">` : 
-                        `<div class="no-poster-large"><i class="fas fa-film fa-5x"></i></div>`
-                    }
-                </div>
-                
-                <div class="details-info">
-                    <div class="genres">
-                        ${(Array.isArray(details.genre) ? details.genre : (details.genre ? details.genre.split(', ') : [])).map(genre => 
-                            `<span class="genre-tag">${genre}</span>`
-                        ).join('')}
-                    </div>
-                    
-                    ${streamingHTML}
-                    
-                    <h3>Overview</h3>
-                    <p class="overview">${overview}</p>
-                    
-                    ${details.director ? `
-                        <div class="director-section">
-                            <h4><i class="fas fa-user-tie"></i> Director</h4>
-                            <p>${details.director}</p>
-                        </div>
-                    ` : ''}
-                    
-                    ${castHTML}
-                    
-                    ${trailerHTML}
-                    
-                    <div class="mood-match">
-                        <h3><i class="fas fa-heart"></i> Why this matches your mood</h3>
-                        <p>${details.whyThisMatchesMood || `This movie is perfect for your <strong>${getMoodName(currentMood)}</strong> mood. The genre and tone align with what you're feeling right now!`}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-    
-    function displayMovieDetails(details, originalMovie) {
-        const modalBody = document.getElementById('modalBody');
+    function createMovieCard(movie) {
+        const card = document.createElement('div');
+        card.className = 'movie-card';
         
-        const genres = details.genres || originalMovie.genre || ['Not specified'];
-        const runtime = details.runtime ? `${details.runtime} min` : 'Not specified';
-        const tagline = details.tagline ? `<p class="tagline">"${details.tagline}"</p>` : '';
+        const poster = document.createElement('div');
+        poster.className = 'movie-poster';
         
-        modalBody.innerHTML = `
-            <div class="movie-details">
-                <div class="details-header">
-                    <h2>${details.title || originalMovie.title}</h2>
-                    <div class="details-meta">
-                        <span class="year">${details.release_date ? details.release_date.substring(0,4) : originalMovie.year}</span>
-                        <span class="rating"><i class="fas fa-star"></i> ${details.rating || originalMovie.rating}</span>
-                        <span class="runtime"><i class="fas fa-clock"></i> ${runtime}</span>
-                    </div>
-                    ${tagline}
-                </div>
-                
-                <div class="details-content">
-                    <div class="details-poster">
-                        ${details.poster_url ? 
-                            `<img src="${details.poster_url}" alt="${details.title}">` : 
-                            `<div class="no-poster-large"><i class="fas fa-film fa-5x"></i></div>`
-                        }
-                    </div>
-                    
-                    <div class="details-info">
-                        <div class="genres">
-                            ${genres.map(genre => `<span class="genre-tag">${genre}</span>`).join('')}
-                        </div>
-                        
-                        <h3>Overview</h3>
-                        <p class="overview">${details.overview || originalMovie.description}</p>
-                        
-                        <div class="mood-match">
-                            <h3><i class="fas fa-heart"></i> Why this matches your mood</h3>
-                            <p>This movie is perfect for your <strong>${getMoodName(currentMood)}</strong> mood because it has elements that align with what you're feeling right now.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Helper functions
-    function getMoodName(moodId) {
-        const moodNames = {
-            'happy': 'Happy',
-            'sad': 'Sad',
-            'romantic': 'Romantic',
-            'action': 'Action',
-            'motivational': 'Motivational',
-            'thriller': 'Thriller',
-            'horror': 'Horror',
-            'calm': 'Calm'
-        };
-        return moodNames[moodId] || moodId;
-    }
-    
-    function getMoodEmoji(moodId) {
-        const moodEmojis = {
-            'happy': '😊',
-            'sad': '😢',
-            'romantic': '💖',
-            'action': '⚔️',
-            'motivational': '🔥',
-            'thriller': '🎭',
-            'horror': '👻',
-            'calm': '😌'
-        };
-        return moodEmojis[moodId] || '🎬';
-    }
-
-    // Helper for YouTube embed link conversion
-    function ensureEmbedUrl(url) {
-        if (!url) return null;
-        if (url.includes('youtube.com/embed/')) return url;
-        
-        let videoId = '';
-        try {
-            if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
-            } else if (url.includes('youtube.com/watch')) {
-                const urlObj = new URL(url);
-                videoId = urlObj.searchParams.get('v');
-            } else if (url.includes('youtube.com/v/')) {
-                videoId = url.split('youtube.com/v/')[1].split(/[?#]/)[0];
-            }
-        } catch (e) {
-            console.error('Error parsing YouTube URL:', e);
-            return url;
+        // Resolve Image Path through anti-timeout image proxy
+        let imgUrl = movie.thumbnail || movie.poster_url;
+        if (!imgUrl && movie.poster_path) {
+            imgUrl = `https://wsrv.nl/?url=image.tmdb.org/t/p/w500${movie.poster_path}&w=500`;
         }
         
-        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+        const movieName = movie.movieName || movie.title;
+        
+        if (imgUrl) {
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.alt = movieName;
+            img.loading = 'lazy';
+            img.onerror = function() {
+                this.parentElement.innerHTML = '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--bg-secondary);"><i class="fas fa-film fa-3x" style="opacity:0.2; color:var(--active-mood);"></i></div>';
+            };
+            poster.appendChild(img);
+        } else {
+            poster.innerHTML = '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--bg-secondary);"><i class="fas fa-film fa-3x" style="opacity:0.2; color:var(--active-mood);"></i></div>';
+        }
+        
+        // Info Section
+        const info = document.createElement('div');
+        info.className = 'movie-info';
+        
+        const title = document.createElement('h3');
+        title.className = 'movie-title';
+        title.textContent = movieName;
+        
+        const meta = document.createElement('div');
+        meta.className = 'movie-meta';
+        meta.innerHTML = `
+            <span class="movie-rating"><i class="fas fa-star"></i> ${parseFloat(movie.rating || movie.vote_average || 0).toFixed(1)}</span>
+            <span class="movie-year">${(movie.year || movie.release_date || '').toString().substring(0,4)}</span>
+        `;
+        
+        const playBtn = document.createElement('div');
+        playBtn.className = 'play-btn-overlay';
+        playBtn.innerHTML = `<i class="fas fa-play"></i> View Details`;
+        
+        info.appendChild(title);
+        info.appendChild(meta);
+        info.appendChild(playBtn);
+        
+        card.appendChild(poster);
+        card.appendChild(info);
+        
+        card.addEventListener('click', () => {
+            if (movie.isFirestore || movie.isFallback) {
+                displayEnhancedMovieDetails(movie, movie.mood || window.ACTIVE_MOOD_ID || 'happy');
+            } else {
+                fetchMovieDetailsFromAPI(movie.id, window.ACTIVE_MOOD_ID || 'happy');
+            }
+        });
+        
+        return card;
+    }
+
+    async function fetchMovieDetailsFromAPI(movieId, mood) {
+        try {
+            const response = await fetch(`/get_movie_details/${movieId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                displayEnhancedMovieDetails(data.details, mood);
+            } else {
+                alert('Could not fetch specific movie details.');
+            }
+        } catch (error) {
+            console.error('Error fetching details:', error);
+        }
+    }
+
+    function displayEnhancedMovieDetails(details, mood) {
+        if (!modalBody) return;
+
+        const title = details.movieName || details.title;
+        let posterUrl = details.thumbnail || details.poster_url;
+        if (!posterUrl && details.poster_path) {
+            posterUrl = `https://wsrv.nl/?url=image.tmdb.org/t/p/w500${details.poster_path}&w=500`;
+        }
+
+        const rating = parseFloat(details.rating || details.vote_average || 0).toFixed(1);
+        const year = (details.year || details.release_date || '').toString().substring(0, 4);
+        const duration = details.duration || (details.runtime ? `${details.runtime} min` : 'N/A');
+        
+        let genreList = '';
+        if (Array.isArray(details.genres)) {
+            genreList = details.genres.map(g => `<span class="pill-tag">${g.name || g}</span>`).join('');
+        } else if (Array.isArray(details.genre)) {
+            genreList = details.genre.map(g => `<span class="pill-tag">${g}</span>`).join('');
+        } else if (typeof details.genre === 'string') {
+            genreList = `<span class="pill-tag">${details.genre}</span>`;
+        }
+
+        const fallbackImg = `<div style="width:100%; height:450px; display:flex; align-items:center; justify-content:center; background:#111827; border-radius:16px;"><i class="fas fa-film fa-4x" style="opacity:0.2;"></i></div>`;
+
+        let streamingHtml = '';
+        if (Array.isArray(details.streaming) && details.streaming.length > 0) {
+            streamingHtml = `<div class="info-group">
+                <h4><i class="fas fa-tv" style="color:var(--active-mood);"></i> Available On</h4>
+                <div class="pill-container">${details.streaming.map(p => `<span class="pill-tag platform-tag">${p}</span>`).join('')}</div>
+            </div>`;
+        }
+
+        let directorHtml = '';
+        if (details.director) {
+            directorHtml = `<div class="info-group">
+                <h4><i class="fas fa-user-tie" style="color:var(--active-mood);"></i> Director</h4>
+                <div class="pill-container"><span class="pill-tag">${details.director}</span></div>
+            </div>`;
+        }
+
+        let castHtml = '';
+        if (Array.isArray(details.cast) && details.cast.length > 0) {
+            castHtml = `<div class="info-group">
+                <h4><i class="fas fa-users" style="color:var(--active-mood);"></i> Starring</h4>
+                <div class="pill-container">${details.cast.slice(0, 6).map(c => `<span class="pill-tag">${c}</span>`).join('')}</div>
+            </div>`;
+        }
+
+        let trailerId = '';
+        if (details.trailerLink) {
+            if (details.trailerLink.includes('v=')) trailerId = details.trailerLink.split('v=')[1].split('&')[0];
+            else if (details.trailerLink.includes('youtu.be/')) trailerId = details.trailerLink.split('youtu.be/')[1].split('?')[0];
+        } else if (details.trailer_url) {
+            if (details.trailer_url.includes('v=')) trailerId = details.trailer_url.split('v=')[1].split('&')[0];
+            else if (details.trailer_url.includes('youtu.be/')) trailerId = details.trailer_url.split('youtu.be/')[1].split('?')[0];
+        } else if (details.trailer && details.trailer.key) {
+            trailerId = details.trailer.key;
+        }
+
+        let trailerHtml = '';
+        if (trailerId) {
+            trailerHtml = `
+                <div class="trailer-side">
+                    <h4><i class="fab fa-youtube" style="color:var(--active-mood);"></i> Watch Trailer</h4>
+                    <div class="trailer-container-ref">
+                        <iframe src="https://www.youtube.com/embed/${trailerId}?autoplay=0" allowfullscreen></iframe>
+                    </div>
+                </div>
+            `;
+        }
+
+        let moodHtml = '';
+        const currentMoodName = window.ACTIVE_MOOD_ID || mood || 'Happy';
+        const formattedMood = currentMoodName.charAt(0).toUpperCase() + currentMoodName.slice(1);
+
+        moodHtml = `
+            <div class="mood-side">
+                <div class="mood-box-ref">
+                    <h4><i class="fas fa-heart" style="color:var(--active-mood);"></i> Why this matches your mood</h4>
+                    <p>${details.whyThisMatchesMood || `This movie is perfect for your <strong>${formattedMood}</strong> mood. The genre and tone align with what you're feeling right now!`}</p>
+                </div>
+            </div>
+        `;
+
+        let html = `
+            <div class="enhanced-modal-content">
+                <div class="modal-header-section">
+                    <h2 class="modal-title-ref">${title}</h2>
+                    <div class="modal-stats-ref">
+                        <div class="stat-box">
+                            <span class="stat-value">${rating}</span>
+                            <span class="stat-label">RATING</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">${year}</span>
+                            <span class="stat-label">YEAR</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">${duration}</span>
+                            <span class="stat-label">DURATION</span>
+                        </div>
+                    </div>
+                    ${details.tagline ? `<p class="modal-tagline-ref">"${details.tagline}"</p>` : ''}
+                </div>
+
+                <div class="modal-main-grid">
+                    <div class="modal-left-col">
+                        <div class="modal-poster-ref">
+                            ${posterUrl ? `<img src="${posterUrl}" alt="${title}" onerror="this.style.display='none'; this.parentElement.querySelector('.poster-fallback').style.display='flex';">` : ''}
+                            <div class="poster-fallback" style="display: ${posterUrl ? 'none' : 'flex'}; width:100%; height:450px; align-items:center; justify-content:center; background:#111827; border-radius:16px;">
+                                <i class="fas fa-film fa-4x" style="opacity:0.2;"></i>
+                            </div>
+                        </div>
+                        <div class="modal-genres-ref">
+                            ${genreList}
+                        </div>
+                    </div>
+                    
+                    <div class="modal-right-col">
+                        ${streamingHtml}
+                        
+                        <div class="info-group">
+                            <h4>Overview</h4>
+                            <p class="overview-text-ref">${details.overview || 'No overview available.'}</p>
+                        </div>
+                        
+                        ${directorHtml}
+                        ${castHtml}
+                    </div>
+                </div>
+
+                <div class="modal-footer-grid">
+                    ${trailerHtml}
+                    ${moodHtml}
+                </div>
+            </div>
+        `;
+
+        modalBody.innerHTML = html;
+        movieModal.style.display = 'block';
     }
 });

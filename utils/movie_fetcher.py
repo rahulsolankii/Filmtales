@@ -34,7 +34,7 @@ class MovieFetcher:
                 'vote_count.gte': 100 # Filter for quality
             }
             
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=15)
             if response.status_code == 200:
                 data = response.json()
                 results = data.get('results', [])
@@ -43,7 +43,7 @@ class MovieFetcher:
                 # If we need more movies, fetch another page
                 if len(all_movies) < count and data.get('total_pages', 1) > 1:
                     params['page'] = 2
-                    response2 = requests.get(url, params=params, timeout=5)
+                    response2 = requests.get(url, params=params, timeout=15)
                     if response2.status_code == 200:
                         results2 = response2.json().get('results', [])
                         all_movies.extend(self._process_movie_results(results2))
@@ -71,22 +71,24 @@ class MovieFetcher:
         fallback_data = [
             {
                 'id': 0,
+                'isFallback': True,
                 'title': 'The Shawshank Redemption',
                 'year': '1994',
                 'rating': 9.3,
-                'description': 'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
-                'poster_url': f"{self.image_base_url}/q6y0GoS0vS9S9v9vS9v9vS9v9vS.jpg",
+                'overview': 'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
+                'poster_url': "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=500",
                 'genre': 'Drama',
                 'streaming': ['Netflix'],
                 'trailer': None
             },
             {
                 'id': 1,
+                'isFallback': True,
                 'title': 'Inception',
                 'year': '2010',
                 'rating': 8.8,
-                'description': 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.',
-                'poster_url': f"{self.image_base_url}/edv5CZv099MvS9v9vS9v9vS9v9v.jpg",
+                'overview': 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.',
+                'poster_url': "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?auto=format&fit=crop&w=500",
                 'genre': 'Sci-Fi',
                 'streaming': ['Amazon Prime'],
                 'trailer': None
@@ -129,7 +131,7 @@ class MovieFetcher:
                 'api_key': self.api_key
             }
             
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=15)
             if response.status_code == 200:
                 data = response.json()
                 
@@ -164,7 +166,7 @@ class MovieFetcher:
                 'language': 'en-US'
             }
             
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=15)
             if response.status_code == 200:
                 data = response.json()
                 videos = data.get('results', [])

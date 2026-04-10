@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<!-- Optional subtle global gradient map for the moods page to differentiate it from landing -->
+<style>
+    body {
+        background: radial-gradient(circle at top right, rgba(236, 72, 153, 0.05), var(--bg-primary) 50%);
+    }
+
+    .mood-selection-container {
+        padding: 60px 0 100px;
+        min-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .mood-selection-header {
+        text-align: center;
+        margin-bottom: 60px;
+        animation: fadeInDown 0.6s ease;
+    }
+
+    .mood-selection-header h1 {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+
+    .mood-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 30px;
+        animation: fadeInUp 0.8s ease;
+    }
+
+    /* We explicitly style the a tag wrapper to maintain the existing mood-card logic but make it a standard link */
+    .mood-link-wrapper {
+        text-decoration: none;
+        display: block;
+    }
+
+    /* Enlarge the cards for the selection page */
+    .mood-selection-container .mood-card {
+        padding: 50px 30px;
+    }
+    .mood-selection-container .mood-icon-wrapper {
+        width: 100px;
+        height: 100px;
+        font-size: 3.5rem;
+        margin-bottom: 25px;
+    }
+    .mood-selection-container .mood-card h3 {
+        font-size: 1.8rem;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(50px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+<script>
+    // Tell script.js not to do dynamic content rendering here
+    window.FILMTALES_CONTEXT = 'moods';
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mood-selection-container">
+    <div class="mood-selection-header">
+        <h1>Select Your Emotion</h1>
+        <p class="tagline">What story are you looking for right now?</p>
+    </div>
+
+    <div class="mood-grid">
+        {% for mood in moods %}
+        <a href="/movies{{ '/' + mood.id }}" class="mood-link-wrapper">
+            <div class="mood-card" style="--mood-color: {{ mood.color }}; --mood-color-rgb: {{ mood.color[1:3]|int(base=16) }}, {{ mood.color[3:5]|int(base=16) }}, {{ mood.color[5:7]|int(base=16) }}">
+                <div class="mood-icon-wrapper">
+                    <i class="fas {{ mood.icon }}"></i>
+                </div>
+                <h3>{{ mood.name.split(' ')[0] }}</h3>
+                <p>Perfect for when you're feeling {{ mood.name.split(' ')[0].lower() }}</p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

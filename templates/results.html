@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<!-- Setup active theme based on selected mood -->
+<style>
+    :root {
+        --active-mood: {{ mood.color }};
+        --active-mood-rgb: {{ mood.color[1:3]|int(base=16) }}, {{ mood.color[3:5]|int(base=16) }}, {{ mood.color[5:7]|int(base=16) }};
+    }
+    
+    .results-hero {
+        padding: 50px 0 30px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        margin-bottom: 40px;
+    }
+
+    .results-hero h1 {
+        font-size: 3rem;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .results-hero h1 span {
+        color: var(--active-mood);
+        text-shadow: 0 0 20px rgba(var(--active-mood-rgb), 0.3);
+    }
+</style>
+<script>
+    // Tell script.js to dynamically fetch movies for this specific mood ID
+    window.FILMTALES_CONTEXT = 'results';
+    window.ACTIVE_MOOD_ID = '{{ mood.id }}';
+</script>
+{% endblock %}
+
+{% block content %}
+<section class="results-hero">
+    <h1><i class="fas {{ mood.icon }}"></i> Movies for your mood: <span>{{ mood.name.split(' ')[0] }}</span></h1>
+    <p class="tagline">Carefully curated selections to match exactly how you feel.</p>
+</section>
+
+<section class="recommendations-section">
+    <div class="section-header">
+        <h2><span id="selectedMoodDisplay">Explore the Collection</span></h2>
+        <div class="mood-display">
+            <button id="refreshBtn" class="refresh-btn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Curating the perfect cinema for you...</p>
+    </div>
+    
+    <div class="movies-grid" id="moviesGrid">
+        <!-- Movies will be loaded here dynamically by script.js -->
+    </div>
+    
+    <div class="no-movies" id="noMovies" style="display: none; text-align: center; padding: 60px 0; color: var(--text-muted);">
+        <i class="fas fa-film fa-3x" style="margin-bottom: 20px;"></i>
+        <h3>No movies found</h3>
+        <p>Try exploring a different emotion</p>
+        <a href="/moods" class="cta-btn" style="margin-top: 20px; font-size: 1rem; padding: 12px 30px;">Go Back</a>
+    </div>
+</section>
+{% endblock %}

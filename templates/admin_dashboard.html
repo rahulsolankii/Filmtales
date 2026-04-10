@@ -3,53 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | FilmTales</title>
+    <title>Admin Dashboard | Filmtales</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
+        body {
+            background-color: var(--bg-primary);
+        }
         .dashboard-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px;
+            padding: 40px 20px;
         }
         .dashboard-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 50px;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 30px 50px;
-            border-radius: 30px;
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
+            background: var(--bg-secondary);
+            padding: 40px 50px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
         .admin-info h2 {
-            font-size: 2rem;
+            font-size: 2.2rem;
             margin-bottom: 5px;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: white;
         }
         .add-movie-btn {
-            background: var(--primary-gradient);
-            color: white;
+            background: white;
+            color: var(--bg-primary);
             border: none;
-            padding: 15px 35px;
-            border-radius: 50px;
+            padding: 16px 36px;
+            border-radius: 12px;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             cursor: pointer;
-            transition: var(--transition);
+            transition: var(--transition-smooth);
             display: flex;
             align-items: center;
             gap: 12px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            font-family: 'Inter', sans-serif;
         }
         .add-movie-btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(168, 85, 247, 0.4);
+            transform: translateY(-2px);
+            background: var(--mood-calm);
+            box-shadow: 0 10px 20px rgba(110, 231, 183, 0.3);
         }
 
         /* Modal Steps */
@@ -67,23 +68,24 @@
         }
         .mood-option {
             background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 20px;
-            border: 1px solid var(--glass-border);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
-            transition: var(--transition);
+            transition: var(--transition-fast);
             text-align: center;
             font-weight: 500;
+            color: var(--text-primary);
         }
         .mood-option:hover {
             background: rgba(255, 255, 255, 0.1);
-            border-color: #6366f1;
             transform: translateY(-3px);
         }
         .mood-option.selected {
-            background: rgba(99, 102, 241, 0.2);
-            border-color: #6366f1;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+            background: rgba(110, 231, 183, 0.15);
+            border-color: var(--mood-calm);
+            color: var(--mood-calm);
+            box-shadow: inset 0 0 15px rgba(110, 231, 183, 0.1);
         }
 
         /* Form Styling */
@@ -96,65 +98,67 @@
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .form-group.full-width {
             grid-column: span 2;
         }
         .form-group label {
             font-size: 0.9rem;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
         .form-group input, .form-group textarea, .form-group select {
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             color: #fff;
+            font-family: 'Inter', sans-serif;
             font-size: 1rem;
-            transition: var(--transition);
+            transition: var(--transition-fast);
         }
         .form-group input:focus, .form-group textarea:focus {
             outline: none;
-            border-color: #6366f1;
+            border-color: var(--mood-calm);
             background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(110, 231, 183, 0.2);
         }
         .modal-footer {
             margin-top: 40px;
             display: flex;
             justify-content: flex-end;
-            gap: 20px;
+            gap: 15px;
         }
         .btn-secondary {
             background: rgba(255, 255, 255, 0.05);
             color: #fff;
-            border: 1px solid var(--glass-border);
-            padding: 12px 30px;
-            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 14px 30px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 500;
-            transition: var(--transition);
+            transition: var(--transition-fast);
+            font-family: 'Inter', sans-serif;
         }
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.1);
         }
         .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
+            background: white;
+            color: var(--bg-primary);
             border: none;
-            padding: 12px 40px;
-            border-radius: 50px;
+            padding: 14px 40px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
-            transition: var(--transition);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: var(--transition-fast);
+            font-family: 'Inter', sans-serif;
         }
         .btn-primary:hover {
-            transform: scale(1.05);
-            box-shadow: 0 15px 30px rgba(168, 85, 247, 0.4);
+            transform: translateY(-2px);
+            background: var(--mood-calm);
+            box-shadow: 0 10px 20px rgba(110, 231, 183, 0.3);
         }
 
         /* Toast message */
@@ -165,23 +169,32 @@
             background: #10b981;
             color: #fff;
             padding: 20px 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             display: none;
             z-index: 3000;
-            animation: slideUp 0.5s ease;
+            animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            font-weight: 500;
         }
         @keyframes slideUp {
             from { transform: translateY(100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Dashboard Info Cards */
+        .info-card {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 24px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <a href="/" style="text-decoration: none;"><h1><i class="fas fa-film"></i>FilmTales</h1></a>
-            <p class="tagline">Admin Management Dashboard</p>
+            <a href="/" style="text-decoration: none;"><h1>Filmtales</h1></a>
+            <p class="tagline">Admin Control Panel</p>
         </header>
 
         <div class="dashboard-container">
@@ -195,33 +208,33 @@
                 </button>
             </div>
 
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px;">
-                <div class="recommendations-section" style="padding: 40px; margin-bottom: 0;">
-                    <h3 style="margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 15px;">
-                        <i class="fas fa-database" style="color: #6366f1;"></i> Database Info
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px;">
+                <div class="info-card">
+                    <h3 style="margin-bottom: 15px; font-size: 1.5rem; display: flex; align-items: center; gap: 15px; color: white;">
+                        <i class="fas fa-database" style="color: var(--mood-calm);"></i> Database Integration
                     </h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem;">Manually added movies are stored in Firestore and merged with TMDB results on the main page.</p>
+                    <p style="color: var(--text-muted); font-size: 1.05rem;">Manually added movies are stored securely in Firestore and merged natively with TMDB dynamic results on the storefront.</p>
                 </div>
-                <div class="recommendations-section" style="padding: 40px; margin-bottom: 0;">
-                    <h3 style="margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 15px;">
-                        <i class="fas fa-shield-alt" style="color: #a855f7;"></i> Security Note
+                <div class="info-card">
+                    <h3 style="margin-bottom: 15px; font-size: 1.5rem; display: flex; align-items: center; gap: 15px; color: white;">
+                        <i class="fas fa-shield-alt" style="color: var(--mood-romantic);"></i> Security Details
                     </h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem;">Only authorized admins can access this panel to maintain content quality.</p>
+                    <p style="color: var(--text-muted); font-size: 1.05rem;">Only authorized admins with Firebase-verified session credentials have access to this control terminal.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Add Movie Modal -->
-    <div class="modal" id="addMovieModal" style="display: none;">
-        <div class="modal-content" style="max-width: 1000px;">
+    <div class="modal" id="addMovieModal">
+        <div class="modal-content" style="max-width: 1000px; padding: 0;">
             <span class="close-btn" id="closeModal">&times;</span>
             <div class="modal-body" style="padding: 60px;">
                 
                 <!-- STEP 1: Mood Selection -->
                 <div class="step-container active" id="step1">
-                    <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Step 1: Select Mood</h2>
-                    <p class="tagline">Which mood category should this movie belong to?</p>
+                    <h2 style="font-size: 2.2rem; margin-bottom: 10px; color: white;">Step 1: Assign Emotion</h2>
+                    <p class="tagline">Which mood category should this movie align with?</p>
                     
                     <div class="mood-options">
                         <div class="mood-option" data-mood="happy">Happy 😊</div>
@@ -234,15 +247,15 @@
                         <div class="mood-option" data-mood="calm">Calm 😌</div>
                     </div>
                     
-                    <div class="modal-footer">
+                    <div class="modal-footer" style="margin-top: 20px;">
                         <button class="btn-primary" id="goToStep2" type="button">Next: Movie Details <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
 
                 <!-- STEP 2: Movie Form -->
                 <div class="step-container" id="step2">
-                    <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Step 2: Movie Details</h2>
-                    <p class="tagline">Fill in the information for the <span id="selectedMoodDisplay" style="color: #a855f7; font-weight: 600;"></span> mood.</p>
+                    <h2 style="font-size: 2.2rem; margin-bottom: 10px; color: white;">Step 2: Movie Specifications</h2>
+                    <p class="tagline">Enter details under the <span id="selectedMoodDisplay" style="color: var(--mood-calm); font-weight: 600;"></span> mood.</p>
                     
                     <form id="addMovieForm" class="movie-form" onsubmit="event.preventDefault();">
                         <div class="form-group">
@@ -288,7 +301,7 @@
                         <div class="form-group full-width">
                             <label>Trailer Link (YouTube Embed Link)</label>
                             <input type="url" id="trailerLink" required placeholder="https://www.youtube.com/embed/YoP670P07" class="persist-input">
-                            <small style="color: #6366f1; margin-top: 5px;">* Standard YouTube links will be automatically converted to embed format</small>
+                            <small style="color: var(--text-muted); margin-top: 2px;">Standard YouTube links will be automatically converted</small>
                         </div>
                         <div class="form-group full-width">
                             <label>Overview</label>
@@ -310,7 +323,7 @@
     </div>
 
     <div class="toast" id="successToast">
-        <i class="fas fa-check-circle"></i> Movie added successfully to Firestore!
+        <i class="fas fa-check-circle"></i> Movie successfully added to Firestore!
     </div>
 
     <script type="module">
@@ -380,9 +393,6 @@
         // Modal Controls
         openBtn.onclick = () => {
             modal.style.display = 'block';
-            // Don't reset everything if there's persisted data
-            // but we might want a fresh start sometimes. 
-            // For now, let's just show what's there.
         };
         closeBtn.onclick = () => modal.style.display = 'none';
         window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; };
@@ -440,7 +450,7 @@
             return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
         }
 
-        // 8. Add validation and success toast
+        // Add validation and success toast
         submitBtn.onclick = async () => {
             if (!addMovieForm.checkValidity()) {
                 addMovieForm.reportValidity();
@@ -469,7 +479,7 @@
             };
 
             try {
-                // 4. Firestore Database structure
+                // Firestore Database structure
                 await addDoc(collection(db, "movies"), movieData);
                 
                 // Show toast

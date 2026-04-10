@@ -5,7 +5,8 @@ load_dotenv()
 
 class Config:
     TMDB_API_KEY = os.getenv('TMDB_API_KEY')
-    TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+    # Bypassing Indian ISP blocks with the alternate official TMDB domain
+    TMDB_BASE_URL = 'https://api.tmdb.org/3'
     TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
     
     # Mood to genre mapping with weights
