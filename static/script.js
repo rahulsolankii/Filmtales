@@ -92,11 +92,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const movieRef = collection(db, "movies");
             const q = query(movieRef, where("mood", "==", mood));
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                isFirestore: true,
-                ...doc.data()
-            }));
+            return snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    isFirestore: true,
+                    // Remap Firestore field names to UI-expected field names
+                    title: data.movieName,
+                    movieName: data.movieName,
+                    poster_url: data.thumbnail,
+                    thumbnail: data.thumbnail,
+                    rating: data.rating,
+                    year: data.year,
+                    duration: data.duration,
+                    tagline: data.oneLineTag,
+                    genre: data.genre,       // already an array
+                    streaming: data.platforms, // admin saves as 'platforms'
+                    cast: data.starring,     // admin saves as 'starring'
+                    director: data.director,
+                    trailerLink: data.trailerLink,
+                    overview: data.overview,
+                    mood: data.mood,
+                    whyThisMatchesMood: data.whyThisMatchesMood,
+                };
+            });
         } catch (err) {
             console.error("Firestore fetch error:", err);
             return [];
@@ -208,22 +227,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const year = (details.year || details.release_date || '').toString().substring(0, 4);
         const duration = details.duration || (details.runtime ? `${details.runtime} min` : 'N/A');
         
+        // Handle Genre: could be array of strings, array of objects, or single string
         let genreList = '';
-        if (Array.isArray(details.genres)) {
-            genreList = details.genres.map(g => `<span class="pill-tag">${g.name || g}</span>`).join('');
-        } else if (Array.isArray(details.genre)) {
-            genreList = details.genre.map(g => `<span class="pill-tag">${g}</span>`).join('');
-        } else if (typeof details.genre === 'string') {
-            genreList = `<span class="pill-tag">${details.genre}</span>`;
+        let rawGenres = details.genres || details.genre || [];
+        if (typeof rawGenres === 'string') rawGenres = rawGenres.split(',').map(g => g.trim());
+        if (Array.isArray(rawGenres)) {
+            genreList = rawGenres.map(g => `<span class="pill-tag">${g.name || g}</span>`).join('');
         }
 
         const fallbackImg = `<div style="width:100%; height:450px; display:flex; align-items:center; justify-content:center; background:#111827; border-radius:16px;"><i class="fas fa-film fa-4x" style="opacity:0.2;"></i></div>`;
 
+        // Handle Streaming/Platforms: could be 'streaming' or 'platforms' field
         let streamingHtml = '';
-        if (Array.isArray(details.streaming) && details.streaming.length > 0) {
+        let rawStreaming = details.streaming || details.platforms || [];
+        if (typeof rawStreaming === 'string') rawStreaming = rawStreaming.split(',').map(s => s.trim());
+        if (Array.isArray(rawStreaming) && rawStreaming.length > 0) {
             streamingHtml = `<div class="info-group">
                 <h4><i class="fas fa-tv" style="color:var(--active-mood);"></i> Available On</h4>
-                <div class="pill-container">${details.streaming.map(p => `<span class="pill-tag platform-tag">${p}</span>`).join('')}</div>
+                <div class="pill-container">${rawStreaming.map(p => `<span class="pill-tag platform-tag">${p}</span>`).join('')}</div>
             </div>`;
         }
 
@@ -235,23 +256,32 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>`;
         }
 
+        // Handle Cast/Starring: could be 'cast' or 'starring' field
         let castHtml = '';
-        if (Array.isArray(details.cast) && details.cast.length > 0) {
+        let rawCast = details.cast || details.starring || [];
+        if (typeof rawCast === 'string') rawCast = rawCast.split(',').map(c => c.trim());
+        if (Array.isArray(rawCast) && rawCast.length > 0) {
             castHtml = `<div class="info-group">
                 <h4><i class="fas fa-users" style="color:var(--active-mood);"></i> Starring</h4>
-                <div class="pill-container">${details.cast.slice(0, 6).map(c => `<span class="pill-tag">${c}</span>`).join('')}</div>
+                <div class="pill-container">${rawCast.slice(0, 6).map(c => `<span class="pill-tag">${c}</span>`).join('')}</div>
             </div>`;
         }
 
+        // Extract YouTube Video ID from any link (watch, youtu.be, embed)
         let trailerId = '';
-        if (details.trailerLink) {
-            if (details.trailerLink.includes('v=')) trailerId = details.trailerLink.split('v=')[1].split('&')[0];
-            else if (details.trailerLink.includes('youtu.be/')) trailerId = details.trailerLink.split('youtu.be/')[1].split('?')[0];
-        } else if (details.trailer_url) {
-            if (details.trailer_url.includes('v=')) trailerId = details.trailer_url.split('v=')[1].split('&')[0];
-            else if (details.trailer_url.includes('youtu.be/')) trailerId = details.trailer_url.split('youtu.be/')[1].split('?')[0];
-        } else if (details.trailer && details.trailer.key) {
-            trailerId = details.trailer.key;
+        const rawTrailerLink = details.trailerLink || details.trailer_url || (details.trailer && details.trailer.key);
+        if (rawTrailerLink) {
+            if (typeof rawTrailerLink === 'string') {
+                if (rawTrailerLink.includes('v=')) {
+                    trailerId = rawTrailerLink.split('v=')[1].split('&')[0];
+                } else if (rawTrailerLink.includes('youtu.be/')) {
+                    trailerId = rawTrailerLink.split('youtu.be/')[1].split('?')[0];
+                } else if (rawTrailerLink.includes('embed/')) {
+                    trailerId = rawTrailerLink.split('embed/')[1].split('?')[0];
+                }
+            } else if (typeof rawTrailerLink === 'object' && rawTrailerLink.key) {
+                trailerId = rawTrailerLink.key;
+            }
         }
 
         let trailerHtml = '';
@@ -279,6 +309,8 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
+        const tagline = details.tagline || details.oneLineTag;
+
         let html = `
             <div class="enhanced-modal-content">
                 <div class="modal-header-section">
@@ -297,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="stat-label">DURATION</span>
                         </div>
                     </div>
-                    ${details.tagline ? `<p class="modal-tagline-ref">"${details.tagline}"</p>` : ''}
+                    ${tagline ? `<p class="modal-tagline-ref">"${tagline}"</p>` : ''}
                 </div>
 
                 <div class="modal-main-grid">
